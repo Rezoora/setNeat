@@ -153,7 +153,7 @@ struct ARViewContainer: UIViewRepresentable {
         plane.firstMaterial?.isDoubleSided = true
         let node = SCNNode(geometry: plane)
         node.eulerAngles.x = -.pi / 2
-        node.position = SCNVector3(0, 0, -0.5)
+        node.position = SCNVector3(0, -0.1, -0.5)
         sceneView.scene.rootNode.addChildNode(node)
 
         return sceneView
