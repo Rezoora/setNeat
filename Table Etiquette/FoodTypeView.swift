@@ -85,7 +85,7 @@ struct FoodTypeView: View {
                                     }
                                     Text(type.title)
                                         .font(.system(size: 32, weight: .bold))
-                                        .foregroundColor(.black)
+                                        
                                 }
                             }
                         }

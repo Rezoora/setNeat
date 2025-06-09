@@ -19,6 +19,7 @@ enum FormalDishType: String, CaseIterable {
     case breadPlate = "small_plate"
     case waterGlass = "cup"
     case wineGlass = "cup2"
+    case champagneGlass = "cup3"
     
     var imageName: String {
         return self.rawValue
@@ -34,6 +35,7 @@ enum FormalDishType: String, CaseIterable {
         case .breadPlate: return "Bread Plate"
         case .waterGlass: return "Water Glass"
         case .wineGlass: return "Wine Glass"
+        case .champagneGlass: return "Champagne Glass"
         }
     }
     
@@ -47,6 +49,7 @@ enum FormalDishType: String, CaseIterable {
         case .breadPlate: return CGSize(width: 0.16, height: 0.16)      // 16cm bread plate
         case .waterGlass: return CGSize(width: 0.08, height: 0.08)      // 8cm water glass
         case .wineGlass: return CGSize(width: 0.07, height: 0.07)       // 7cm wine glass
+        case .champagneGlass: return CGSize(width: 0.06, height: 0.06)  // 6cm champagne glass
         }
     }
     
@@ -60,6 +63,7 @@ enum FormalDishType: String, CaseIterable {
         case .breadPlate: return "Upper left with butter knife"
         case .waterGlass: return "Above the knife and spoon"
         case .wineGlass: return "Right of water glass"
+        case .champagneGlass: return "Upper right area"
         }
     }
 }
@@ -85,7 +89,8 @@ struct FormalTableConfiguration {
         FormalDishGuide(type: .spoon, position: SCNVector3(0.22, 0, 0), size: FormalDishType.spoon.defaultSize),
         FormalDishGuide(type: .breadPlate, position: SCNVector3(-0.25, 0, -0.22), size: FormalDishType.breadPlate.defaultSize),
         FormalDishGuide(type: .waterGlass, position: SCNVector3(0.18, 0, -0.20), size: FormalDishType.waterGlass.defaultSize),
-        FormalDishGuide(type: .wineGlass, position: SCNVector3(0.26, 0, -0.20), size: FormalDishType.wineGlass.defaultSize)
+        FormalDishGuide(type: .wineGlass, position: SCNVector3(0.26, 0, -0.20), size: FormalDishType.wineGlass.defaultSize),
+        FormalDishGuide(type: .champagneGlass, position: SCNVector3(0.30, 0, -0.14), size: FormalDishType.champagneGlass.defaultSize)
     ]
 }
 

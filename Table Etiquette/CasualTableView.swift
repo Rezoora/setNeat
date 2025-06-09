@@ -16,8 +16,8 @@ struct CasualTableConfiguration {
         DishGuide(type: .fork, position: SCNVector3(-0.16, 0, 0), size: DishType.fork.defaultSize, rotation: 0),
         DishGuide(type: .knife, position: SCNVector3(0.16, 0, 0), size: DishType.knife.defaultSize, rotation: 0),
         DishGuide(type: .spoon, position: SCNVector3(0.23, 0, 0), size: DishType.spoon.defaultSize, rotation: 0),
-        DishGuide(type: .cup, position: SCNVector3(0.18, 0, -0.18), size: DishType.cup.defaultSize)
-        // Note: No bread plate in casual setting
+        DishGuide(type: .smallPlate, position: SCNVector3(-0.25, 0, -0.20), size: DishType.smallPlate.defaultSize),
+        DishGuide(type: .cup, position: SCNVector3(0.25, 0, -0.18), size: DishType.cup.defaultSize)
     ]
 }
 
@@ -29,8 +29,8 @@ struct CasualTableView: View {
     @State private var showingProgress = false
     @State private var completedItems: Set<DishType> = []
     
-    // Casual setting excludes small plate
-    private let casualDishTypes: [DishType] = [.plate, .fork, .knife, .spoon, .cup]
+    // Casual setting includes bread plate
+    private let casualDishTypes: [DishType] = [.plate, .fork, .knife, .spoon, .smallPlate, .cup]
     
     var progressPercentage: Double {
         return Double(completedItems.count) / Double(casualDishTypes.count) * 100
@@ -212,10 +212,10 @@ struct CasualTableView: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 instructionRow("1.", "Main plate in center")
-                instructionRow("2.", "Fork on left")
+                instructionRow("2.", "Fork on left side")
                 instructionRow("3.", "Knife & spoon on right")
-                instructionRow("4.", "Glass above utensils")
-                instructionRow("ℹ️", "No bread plate needed")
+                instructionRow("4.", "Bread plate upper left")
+                instructionRow("5.", "Cup & saucer upper right")
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -300,7 +300,7 @@ struct CasualARViewContainer: UIViewRepresentable {
         private var guideNodes: [SCNNode] = []
         private var selectedNode: SCNNode?
         private var hasPlacedGuides = false
-        private let casualDishTypes: [DishType] = [.plate, .fork, .knife, .spoon, .cup]
+        private let casualDishTypes: [DishType] = [.plate, .fork, .knife, .spoon, .smallPlate, .cup]
         
         init(feedbackManager: FeedbackManager, guidanceManager: GuidanceManager, completedItems: Binding<Set<DishType>>) {
             self.feedbackManager = feedbackManager

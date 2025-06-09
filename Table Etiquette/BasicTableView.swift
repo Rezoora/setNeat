@@ -63,9 +63,9 @@ enum DishType: String, CaseIterable {
         case .plate: return "Center of the place setting"
         case .fork: return "Left side of the plate"
         case .knife: return "Right side of the plate, blade facing inward"
-        case .spoon: return "Right of the knife"
-        case .cup: return "Above the knife and spoon"
-        case .smallPlate: return "Upper left of the main plate"
+        case .cup: return "Upper right area"
+        case .spoon: return "Right side of the plate"
+        case .smallPlate: return "Upper left area"
         }
     }
 }
@@ -76,9 +76,7 @@ struct TableConfiguration {
         DishGuide(type: .plate, position: SCNVector3(0, 0, 0), size: DishType.plate.defaultSize),
         DishGuide(type: .fork, position: SCNVector3(-0.18, 0, 0), size: DishType.fork.defaultSize, rotation: 0),
         DishGuide(type: .knife, position: SCNVector3(0.18, 0, 0), size: DishType.knife.defaultSize, rotation: 0),
-        DishGuide(type: .spoon, position: SCNVector3(0.25, 0, 0), size: DishType.spoon.defaultSize, rotation: 0),
-        DishGuide(type: .cup, position: SCNVector3(0.20, 0, -0.20), size: DishType.cup.defaultSize),
-        DishGuide(type: .smallPlate, position: SCNVector3(-0.25, 0, -0.20), size: DishType.smallPlate.defaultSize)
+        DishGuide(type: .cup, position: SCNVector3(0.25, 0, -0.15), size: DishType.cup.defaultSize)
     ]
 }
 
@@ -272,9 +270,8 @@ struct BasicTableView: View {
             VStack(alignment: .leading, spacing: 4) {
                 instructionRow("1.", "Place dinner plate in center")
                 instructionRow("2.", "Fork on the left side")
-                instructionRow("3.", "Knife & spoon on the right")
-                instructionRow("4.", "Glass above the utensils")
-                instructionRow("5.", "Bread plate upper left")
+                instructionRow("3.", "Knife on the right side")
+                instructionRow("4.", "Glass in upper right area")
             }
             .font(.caption)
             .foregroundColor(.secondary)
