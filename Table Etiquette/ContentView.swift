@@ -31,7 +31,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         // Title
-                        Text("Table Manners")
+                        Text("Table Design")
                             .font(.system(size: 25, weight: .bold))
                             .foregroundColor(.primary)
                             .padding(.horizontal)
@@ -154,7 +154,7 @@ struct ContentView: View {
                                             Spacer()
                                         }
                                         Text(design.rawValue)
-                                            .foregroundColor(.black)
+                                            .foregroundColor(.primary)
                                             .font(.system(size: 33, weight: .medium))
                                             .padding([.leading, .bottom], 20)
                                             .shadow(radius: 3)

@@ -262,16 +262,30 @@ struct BasicTableView: View {
     
     private var instructionsView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Quick Guide")
-                        .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
+            HStack {
+                Text("Quick Guide")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                // Tap indicator
+                HStack(spacing: 4) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Text("Tap guides to place")
+                        .font(.caption2)
+                        .foregroundColor(.blue)
+                }
+            }
             
             VStack(alignment: .leading, spacing: 4) {
-                instructionRow("1.", "Place dinner plate in center")
-                instructionRow("2.", "Fork on the left side")
-                instructionRow("3.", "Knife on the right side")
-                instructionRow("4.", "Glass in upper right area")
+                instructionRow("1.", "Place dinner plate in center", completed: completedItems.contains(.plate))
+                instructionRow("2.", "Fork on the left side", completed: completedItems.contains(.fork))
+                instructionRow("3.", "Knife on the right side", completed: completedItems.contains(.knife))
+                instructionRow("4.", "Glass in upper right area", completed: completedItems.contains(.cup))
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -287,14 +301,22 @@ struct BasicTableView: View {
         .padding(.bottom, 30)
     }
     
-    private func instructionRow(_ number: String, _ text: String) -> some View {
+    private func instructionRow(_ number: String, _ text: String, completed: Bool = false) -> some View {
         HStack {
             Text(number)
                 .fontWeight(.bold)
-                .foregroundColor(.accentColor)
+                .foregroundColor(completed ? .green : .accentColor)
             Text(text)
+                .strikethrough(completed)
+                .foregroundColor(completed ? .green : .secondary)
             Spacer()
+            if completed {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.caption)
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: completed)
     }
     
     private func resetPlacement() {
@@ -330,26 +352,9 @@ class FeedbackManager: ObservableObject {
     }
     
     private func triggerHapticFeedback(for type: FeedbackType) {
-        switch type {
-        case .correct:
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-        case .incorrect:
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.error)
-        case .reset:
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-        case .completed:
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            // Add celebration haptics
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                generator.notificationOccurred(.success)
-            }
-        case .neutral:
-            break
-        }
+        // Haptics are now handled by HapticManager in the AR coordinator
+        // This prevents duplicate haptic calls
+        print("📱 FeedbackManager: Skipping haptic (handled by HapticManager)")
     }
 }
 
@@ -482,6 +487,7 @@ struct ARViewContainer: UIViewRepresentable {
         private var selectedNode: SCNNode?
         private var hasPlacedGuides = false
         private var detectionCooldown = false
+        private let hapticManager = HapticManager()
         
         init(feedbackManager: FeedbackManager, guidanceManager: GuidanceManager, completedItems: Binding<Set<DishType>>) {
             self.feedbackManager = feedbackManager
@@ -503,10 +509,21 @@ struct ARViewContainer: UIViewRepresentable {
         
         @objc private func resetPlacement() {
             hasPlacedGuides = false
-            guideNodes.forEach { $0.removeFromParentNode() }
+            
+            // Remove all animations and effects before removing nodes
+            guideNodes.forEach { node in
+                node.removeAllActions()
+                node.removeAllParticleSystems()
+                node.childNodes.forEach { $0.removeFromParentNode() }
+                node.removeFromParentNode()
+            }
+            
             guideNodes.removeAll()
             dishGuides.removeAll()
             completedItems.removeAll()
+            
+            // Use HapticManager for reset feedback
+            hapticManager.triggerReset()
         }
         
         // MARK: - AR Session Setup
@@ -621,7 +638,10 @@ struct ARViewContainer: UIViewRepresentable {
             material.transparency = 0.7
             
             // Add subtle glow effect
-            material.emission.contents = UIColor.white.withAlphaComponent(0.1)
+            material.emission.contents = UIColor.systemBlue.withAlphaComponent(0.2)
+            
+            // Add border effect
+            material.multiply.contents = UIColor.systemBlue.withAlphaComponent(0.1)
             
             plane.materials = [material]
             
@@ -630,19 +650,64 @@ struct ARViewContainer: UIViewRepresentable {
             node.eulerAngles.x = -.pi / 2
             node.name = "\(guide.type.rawValue)_guide"
             
-            // Add subtle animation
-            let breathingAction = SCNAction.sequence([
-                SCNAction.fadeOpacity(to: 0.5, duration: 1.5),
-                SCNAction.fadeOpacity(to: 0.8, duration: 1.5)
-            ])
-            node.runAction(SCNAction.repeatForever(breathingAction))
+            // Entrance animation
+            node.scale = SCNVector3(0.1, 0.1, 0.1)
+            node.opacity = 0
+            
+            let scaleUp = SCNAction.scale(to: 1.0, duration: 0.5)
+            let fadeIn = SCNAction.fadeIn(duration: 0.5)
+            let entrance = SCNAction.group([scaleUp, fadeIn])
+            
+            node.runAction(entrance) {
+                // Start breathing animation after entrance
+                let breathingAction = SCNAction.sequence([
+                    SCNAction.fadeOpacity(to: 0.5, duration: 1.5),
+                    SCNAction.fadeOpacity(to: 0.8, duration: 1.5)
+                ])
+                node.runAction(SCNAction.repeatForever(breathingAction), forKey: "breathing")
+                
+                // Add gentle floating animation
+                let floatUp = SCNAction.moveBy(x: 0, y: 0.005, z: 0, duration: 2.0)
+                let floatDown = SCNAction.moveBy(x: 0, y: -0.005, z: 0, duration: 2.0)
+                let float = SCNAction.sequence([floatUp, floatDown])
+                node.runAction(SCNAction.repeatForever(float), forKey: "float")
+            }
             
             return node
         }
         
         // MARK: - Gesture Handlers
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            // Implementation for tap interactions
+            guard let sceneView = sceneView else { return }
+            
+            let location = gesture.location(in: sceneView)
+            print("🎯 TAP DETECTED at location: \(location)")
+            
+            // Immediate tap feedback for user confirmation
+            hapticManager.triggerTap()
+            
+            // Hit test to find tapped objects
+            let hitResults = sceneView.hitTest(location, options: nil)
+            print("🔍 Hit test found \(hitResults.count) objects")
+            
+            for result in hitResults {
+                if let nodeName = result.node.name {
+                    print("📍 Hit object: \(nodeName)")
+                    
+                    // Check if this is a dish guide that can be activated
+                    if nodeName.contains("_guide"),
+                       let dishType = extractDishType(from: nodeName) {
+                        print("✅ Valid dish guide found: \(dishType.displayName)")
+                        
+                        // Simulate placing an object at this location
+                        simulateObjectPlacement(at: result.node.position, for: dishType)
+                        return
+                    }
+                }
+            }
+            
+            // If no valid guide was hit
+            print("❌ No valid dish guide was tapped")
         }
 
         @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -766,15 +831,179 @@ struct ARViewContainer: UIViewRepresentable {
                   let material = guideNode.geometry?.materials.first else { return }
             
             if completed {
-                material.diffuse.contents = UIColor.green.withAlphaComponent(0.6)
-                material.emission.contents = UIColor.green.withAlphaComponent(0.3)
+                // Smooth color transition to green
+                let colorTransition = SCNAction.customAction(duration: 0.5) { (node, elapsedTime) in
+                    let progress = elapsedTime / 0.5
+                    let greenAlpha = Float(progress) * 0.8
+                    
+                    material.diffuse.contents = UIColor.systemGreen.withAlphaComponent(CGFloat(greenAlpha))
+                    material.emission.contents = UIColor.systemGreen.withAlphaComponent(CGFloat(greenAlpha * 0.5))
+                }
                 
-                // Celebration animation
-                let scaleUp = SCNAction.scale(to: 1.1, duration: 0.2)
-                let scaleDown = SCNAction.scale(to: 1.0, duration: 0.2)
-                let celebrate = SCNAction.sequence([scaleUp, scaleDown])
-                guideNode.runAction(celebrate)
+                // Success animation sequence
+                let scaleUp = SCNAction.scale(to: 1.2, duration: 0.3)
+                let scaleDown = SCNAction.scale(to: 1.0, duration: 0.3)
+                let rotateY = SCNAction.rotateBy(x: 0, y: CGFloat.pi * 2, z: 0, duration: 0.6)
+                
+                let celebrateSequence = SCNAction.sequence([
+                    SCNAction.group([colorTransition, scaleUp]),
+                    SCNAction.group([scaleDown, rotateY])
+                ])
+                
+                guideNode.runAction(celebrateSequence)
+                
+                // Add glow effect
+                addGlowEffect(to: guideNode)
+                
+                // Pulsing animation for completed state
+                let pulse = SCNAction.sequence([
+                    SCNAction.scale(to: 1.05, duration: 1.0),
+                    SCNAction.scale(to: 1.0, duration: 1.0)
+                ])
+                guideNode.runAction(SCNAction.repeatForever(pulse), forKey: "pulse")
             }
+        }
+        
+        private func addGlowEffect(to node: SCNNode) {
+            // Create a larger transparent version for glow effect
+            if let geometry = node.geometry?.copy() as? SCNGeometry {
+                let glowMaterial = SCNMaterial()
+                glowMaterial.diffuse.contents = UIColor.systemGreen.withAlphaComponent(0.3)
+                glowMaterial.emission.contents = UIColor.systemGreen.withAlphaComponent(0.4)
+                glowMaterial.isDoubleSided = true
+                
+                geometry.materials = [glowMaterial]
+                
+                let glowNode = SCNNode(geometry: geometry)
+                glowNode.position = SCNVector3(0, 0.001, 0) // Slightly above
+                glowNode.scale = SCNVector3(1.1, 1.1, 1.1)
+                glowNode.opacity = 0.6
+                
+                node.addChildNode(glowNode)
+                
+                // Glow pulsing animation
+                let glowPulse = SCNAction.sequence([
+                    SCNAction.fadeOpacity(to: 0.8, duration: 1.0),
+                    SCNAction.fadeOpacity(to: 0.3, duration: 1.0)
+                ])
+                glowNode.runAction(SCNAction.repeatForever(glowPulse))
+            }
+        }
+        
+        // MARK: - Object Placement Simulation
+        private func simulateObjectPlacement(at position: SCNVector3, for dishType: DishType) {
+            print("🎯 Simulating placement for \(dishType.displayName)")
+            
+            // Check if already completed
+            guard !completedItems.contains(dishType) else { 
+                print("⚠️ \(dishType.displayName) already completed")
+                return 
+            }
+            
+            // Find the corresponding guide
+            guard let guide = dishGuides.first(where: { $0.type == dishType }),
+                  let guideNode = guideNodes.first(where: { $0.name?.contains(dishType.rawValue) == true }) else { 
+                print("❌ Could not find guide for \(dishType.displayName)")
+                return 
+            }
+            
+            let distance = distance(from: position, to: guide.position)
+            let threshold: Float = 0.08 // 8cm tolerance
+            print("📏 Distance: \(distance)m, Threshold: \(threshold)m")
+            
+            if distance < threshold {
+                // Correct placement!
+                print("🎉 CORRECT PLACEMENT for \(dishType.displayName)!")
+                completedItems.insert(dishType)
+                
+                // Visual feedback with animation
+                updateGuideCompletion(for: dishType, completed: true)
+                
+                // Use HapticManager for success feedback
+                hapticManager.triggerSuccess()
+                
+                // Add celebration particles
+                addCelebrationEffect(to: guideNode)
+                
+                // Show feedback message (without duplicating haptics)
+                DispatchQueue.main.async {
+                    self.feedbackManager.showFeedback(.correct)
+                }
+                
+                // Check completion
+                if completedItems.count == DishType.allCases.count {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.feedbackManager.showFeedback(.completed)
+                        self.triggerCompletionCelebration()
+                    }
+                }
+            } else {
+                // Incorrect placement
+                print("❌ INCORRECT PLACEMENT for \(dishType.displayName) - distance too far")
+                
+                // Use HapticManager for error feedback
+                hapticManager.triggerError()
+                
+                // Show feedback message (without duplicating haptics)
+                DispatchQueue.main.async {
+                    self.feedbackManager.showFeedback(.incorrect)
+                }
+                
+                // Visual shake effect
+                addShakeEffect(to: guideNode)
+            }
+        }
+        
+        private func addCelebrationEffect(to node: SCNNode) {
+            // Particle system for celebration
+            let particleSystem = SCNParticleSystem()
+            particleSystem.birthRate = 50
+            particleSystem.particleLifeSpan = 1.0
+            particleSystem.particleLifeSpanVariation = 0.5
+            particleSystem.emissionDuration = 0.5
+            particleSystem.particleSize = 0.01
+            particleSystem.particleSizeVariation = 0.005
+            particleSystem.particleVelocity = 0.1
+            particleSystem.particleVelocityVariation = 0.05
+            particleSystem.emitterShape = SCNSphere(radius: 0.02)
+            particleSystem.particleColor = UIColor.systemGreen
+            particleSystem.particleColorVariation = SCNVector4(0.2, 0.2, 0.0, 0.0)
+            
+            node.addParticleSystem(particleSystem)
+            
+            // Remove particle system after animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                node.removeAllParticleSystems()
+            }
+        }
+        
+        private func addShakeEffect(to node: SCNNode) {
+            let shakeAnimation = CABasicAnimation(keyPath: "position")
+            shakeAnimation.duration = 0.1
+            shakeAnimation.repeatCount = 3
+            shakeAnimation.autoreverses = true
+            shakeAnimation.fromValue = NSValue(scnVector3: SCNVector3(
+                node.position.x - 0.01,
+                node.position.y,
+                node.position.z
+            ))
+            shakeAnimation.toValue = NSValue(scnVector3: SCNVector3(
+                node.position.x + 0.01,
+                node.position.y,
+                node.position.z
+            ))
+            
+            node.addAnimation(shakeAnimation, forKey: "shake")
+        }
+        
+        private func triggerCompletionCelebration() {
+            // Add celebration effects to all completed guides
+            for guideNode in guideNodes {
+                addCelebrationEffect(to: guideNode)
+            }
+            
+            // Use HapticManager for completion celebration
+            hapticManager.triggerCompletion()
         }
         
         deinit {
@@ -923,4 +1152,84 @@ struct GuidanceStep {
 
 #Preview {
     BasicTableView()
+}
+
+// MARK: - Haptic Manager
+class HapticManager {
+    private let notificationGenerator = UINotificationFeedbackGenerator()
+    private let lightImpactGenerator = UIImpactFeedbackGenerator(style: .light)
+    private let mediumImpactGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private let heavyImpactGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    
+    init() {
+        prepareGenerators()
+    }
+    
+    private func prepareGenerators() {
+        notificationGenerator.prepare()
+        lightImpactGenerator.prepare()
+        mediumImpactGenerator.prepare()
+        heavyImpactGenerator.prepare()
+    }
+    
+    func triggerSuccess() {
+        DispatchQueue.main.async {
+            print("🔔 HAPTIC: Triggering SUCCESS feedback")
+            self.notificationGenerator.notificationOccurred(.success)
+            
+            // Re-prepare for next use
+            self.notificationGenerator.prepare()
+        }
+    }
+    
+    func triggerError() {
+        DispatchQueue.main.async {
+            print("🔔 HAPTIC: Triggering ERROR feedback")
+            self.notificationGenerator.notificationOccurred(.error)
+            
+            // Re-prepare for next use
+            self.notificationGenerator.prepare()
+        }
+    }
+    
+    func triggerTap() {
+        DispatchQueue.main.async {
+            print("🔔 HAPTIC: Triggering TAP feedback")
+            self.lightImpactGenerator.impactOccurred()
+            
+            // Re-prepare for next use
+            self.lightImpactGenerator.prepare()
+        }
+    }
+    
+    func triggerCompletion() {
+        DispatchQueue.main.async {
+            print("🔔 HAPTIC: Triggering COMPLETION celebration")
+            
+            // Multiple heavy impacts for celebration
+            self.heavyImpactGenerator.impactOccurred()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.heavyImpactGenerator.impactOccurred()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                self.notificationGenerator.notificationOccurred(.success)
+            }
+            
+            // Re-prepare all generators
+            self.heavyImpactGenerator.prepare()
+            self.notificationGenerator.prepare()
+        }
+    }
+    
+    func triggerReset() {
+        DispatchQueue.main.async {
+            print("🔔 HAPTIC: Triggering RESET feedback")
+            self.mediumImpactGenerator.impactOccurred()
+            
+            // Re-prepare for next use
+            self.mediumImpactGenerator.prepare()
+        }
+    }
 }

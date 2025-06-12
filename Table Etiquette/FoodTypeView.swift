@@ -7,6 +7,8 @@ struct FoodTypeView: View {
     @State private var selectedFoodType: FoodType? = nil
     @State private var showTableView: Bool = false
     
+    let poloBlue = Color(red: 147/255, green: 173/255, blue: 203/255)
+    
     let foodTypes: [FoodType] = [.international, .italian, .asian, .middleEastern, .indian]
     
     var body: some View {
@@ -45,7 +47,7 @@ struct FoodTypeView: View {
                     }
                 }
                 .padding([.horizontal, .top])
-                Divider().padding(.bottom, 8)
+                Divider().padding(.vertical, 8)
                 // Food type cards
                 ScrollView {
                     VStack(spacing: 20) {
@@ -59,7 +61,7 @@ struct FoodTypeView: View {
                             }) {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 40)
-                                        .fill(Color.accentColor.opacity(0.25))
+                                        .fill(poloBlue.opacity(0.8))
                                         .frame(height: 80)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 40)
@@ -84,8 +86,8 @@ struct FoodTypeView: View {
                                         }
                                     }
                                     Text(type.title)
+                                        .foregroundColor(.primary)
                                         .font(.system(size: 32, weight: .bold))
-                                        
                                 }
                             }
                         }

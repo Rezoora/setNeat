@@ -394,25 +394,25 @@ struct NotificationSettingsView: View {
     @State private var selectedCategory: TableMannersArticle.ArticleCategory = .basic
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Permission Section
-                    permissionSection
-                    
-                    // Daily Tip Section
-                    dailyTipSection
-                    
-                    // Articles Section
-                    articlesSection
-                }
-                .padding()
+        ScrollView {
+            VStack(spacing: 20) {
+                // Permission Section
+                permissionSection
+                
+                // Daily Tip Section
+                dailyTipSection
+                
+                // Articles Section
+                articlesSection
             }
-            .navigationTitle("Table Manners Hub")
-            .navigationBarTitleDisplayMode(.large)
-            .refreshable {
-                await notificationManager.fetchArticles()
-            }
+            .padding()
+        }
+        .navigationTitle("Table Manners Hub")
+        .navigationBarTitleDisplayMode(.large)
+        .background(Color.accentColor.opacity(0.08)
+            .ignoresSafeArea())
+        .refreshable {
+            await notificationManager.fetchArticles()
         }
         .task {
             await notificationManager.fetchArticles()
@@ -453,7 +453,7 @@ struct NotificationSettingsView: View {
                 }
             }
             .padding()
-            .background(Color(.systemGray6))
+            .background(.regularMaterial)
             .cornerRadius(12)
         }
     }
@@ -650,4 +650,4 @@ struct ArticleDetailView: View {
 
 #Preview {
     NotificationSettingsView()
-} 
+}
