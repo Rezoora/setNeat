@@ -2,7 +2,7 @@
 //  BasicTableView.swift
 //  Table Etiquette
 //
-//  Created by Bekhruzjon Hakmirzaev on 05/05/25.
+//  Created by Reza Zohrabi on 05/05/25.
 //
 
 import SwiftUI
